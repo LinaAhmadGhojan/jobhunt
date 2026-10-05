@@ -1,6 +1,6 @@
 // One function per source. Each returns an array of raw jobs: { source, kind, title, company, location, tags, salary, url, description, posted, contacts, locationList? }
 // Only public, no-login endpoints are used (official APIs / RSS). A failing source never stops the run.
-import { get, strip, contacts, parseFeed, salaryText, salaryFromText, toIso, pause } from "./util.mjs";
+import { get, strip, decode, contacts, parseFeed, salaryText, salaryFromText, toIso, pause } from "./util.mjs";
 
 const job = (o) => ({ kind: "job", tags: [], salary: { text: "" }, location: "", company: "", description: "", contacts: contacts(o.description || ""), ...o });
 
@@ -31,23 +31,6 @@ async function remoteok(p) {
       }));
     } catch { /* tag without results */ }
     await pause(400);
-  }
-  return [...out.values()];
-}
-
-async function jobicy(p) {
-  const out = new Map();
-  const geos = ["anywhere", "emea", "apac", "turkey", "malaysia", "united-arab-emirates", "saudi-arabia", "jordan", "qatar", "kuwait", "bahrain", "oman"];
-  for (const geo of geos) for (const tag of ["php", "laravel", "vue", "react", "python", "full-stack", "javascript"]) {
-    try {
-      const j = await get(`https://jobicy.com/api/v2/remote-jobs?count=50&geo=${geo}&tag=${tag}`);
-      for (const x of j.jobs || []) out.set(x.id, job({
-        source: "Jobicy", title: x.jobTitle, company: x.companyName, location: Array.isArray(x.jobGeo) ? x.jobGeo.join(", ") : x.jobGeo, tags: [...(x.jobIndustry || []), ...(x.jobType || [])],
-        salary: { min: x.salaryMin || x.annualSalaryMin || 0, max: x.salaryMax || x.annualSalaryMax || 0, currency: x.salaryCurrency || "USD", period: x.salaryPeriod || "year", text: (x.salaryMin || x.annualSalaryMin) ? salaryText({ min: x.salaryMin || x.annualSalaryMin, max: x.salaryMax || x.annualSalaryMax, currency: x.salaryCurrency || "USD", period: x.salaryPeriod || "year" }) : "" },
-        url: x.url, description: strip(x.jobDescription || x.jobExcerpt).slice(0, 4000), posted: toIso(x.pubDate), jobLevel: x.jobLevel,
-      }));
-    } catch { /* geo/tag without results */ }
-    await pause(250);
   }
   return [...out.values()];
 }
@@ -236,4 +219,66 @@ async function reddit() {
   return out;
 }
 
-export const SOURCES = { remotive, remoteok, jobicy, himalayas, workingNomadsSearch, weWorkRemotely, larajobs, vuejobs, remoteYeah, noDesk, pythonJobs, hackerNews, jooble, adzuna, freelancer, reddit };
+/* ───────────── LinkedIn (public "guest" search pages, low volume) ─────────────
+   LinkedIn has no jobs API. This reads the same public result pages you see when logged out (remote filter, last 7 days),
+   a few polite requests per run. It is against LinkedIn's terms for automated use, so it is optional (LINKEDIN=off to disable)
+   and it stops by itself if LinkedIn rate-limits. Job descriptions are not fetched. */
+async function linkedin(p) {
+  if ((process.env.LINKEDIN || "").toLowerCase() === "off") throw new Error("skipped — LINKEDIN=off");
+  const queries = ["laravel", "php developer", "vue.js developer", "next.js developer", "react developer", "full stack developer", "backend developer", "software engineer", "web developer", "python fastapi", "erp developer"];
+  const places = [["Worldwide", 3], ["United Arab Emirates", 3], ["Saudi Arabia", 3], ["Qatar", 2], ["Kuwait", 2], ["Bahrain", 2], ["Oman", 2], ["Jordan", 2], ["Turkey", 2], ["Malaysia", 2]];
+  const out = new Map();
+  let blocked = false;
+  const attr = (s, re) => decode((s.match(re) || [])[1] || "").replace(/\s+/g, " ").trim();
+  for (const [place, pages] of places) for (const q of queries) for (let pg = 0; pg < pages && !blocked; pg++) {
+    try {
+      const html = await get(`https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(q)}&location=${encodeURIComponent(place)}&f_WT=2&f_TPR=r604800&sortBy=DD&start=${pg * 25}`, { json: false, retries: 0 });
+      for (const card of html.split("<li>").slice(1)) {
+        const id = (card.match(/jobPosting:(\d+)/) || [])[1];
+        const title = attr(card, /base-search-card__title[^>]*>\s*([^<]+)/);
+        if (!id || !title) continue;
+        out.set(id, job({
+          source: "LinkedIn", title, company: attr(card, /base-search-card__subtitle[^>]*>[\s\S]*?<a[^>]*>\s*([^<]+)/) || attr(card, /base-search-card__subtitle[^>]*>\s*([^<]+)/),
+          location: attr(card, /job-search-card__location[^>]*>\s*([^<]+)/) || place, tags: [q], url: `https://www.linkedin.com/jobs/view/${id}`,
+          description: `LinkedIn · ${q} · ${place}`, posted: toIso((card.match(/datetime="([^"]+)"/) || [])[1]), contacts: { emails: [], phones: [], whatsapp: [], telegram: [] },
+        }));
+      }
+    } catch (e) { if (/429|999|403/.test(e.message)) blocked = true; }
+    await pause(900);
+  }
+  if (!out.size) throw new Error("no results (LinkedIn may be rate-limiting this connection — try later)");
+  return [...out.values()];
+}
+
+/* ───────────── JSearch API (Google for Jobs): Indeed · LinkedIn · Glassdoor · Bayt · GulfTalent · ZipRecruiter … ─────────────
+   Indeed / Glassdoor / Bayt / GulfTalent block every automated request (Cloudflare), so the only clean way to get them inside
+   the tool is an aggregator API. Free plan (~200 requests / month): https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch
+   Put the key in jobhunt/.env →  JSEARCH_KEY=...    (JSEARCH_MAX = requests per run, default 30) */
+async function jsearch(p) {
+  const key = process.env.JSEARCH_KEY;
+  if (!key) throw new Error("skipped — add JSEARCH_KEY to .env to get Indeed / Glassdoor / Bayt / GulfTalent results (see README)");
+  const max = Number(process.env.JSEARCH_MAX || 30);
+  const places = ["", "United Arab Emirates", "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman", "Jordan", "Turkey", "Malaysia"];
+  const queries = ["laravel developer", "php developer", "vue.js developer", "full stack developer"];
+  const out = new Map();
+  let calls = 0;
+  for (const q of queries) for (const place of places) {
+    if (calls++ >= max) break;
+    try {
+      const j = await get(`https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(`${q} remote${place ? " in " + place : ""}`)}&page=1&num_pages=1&date_posted=week&remote_jobs_only=true`, { headers: { "X-RapidAPI-Key": key, "X-RapidAPI-Host": "jsearch.p.rapidapi.com" } });
+      for (const x of j.data || []) {
+        const sal = x.job_min_salary ? salaryText({ min: Math.round(x.job_min_salary), max: Math.round(x.job_max_salary || 0), currency: x.job_salary_currency || "USD", period: (x.job_salary_period || "").toLowerCase() }) : "";
+        out.set(x.job_id, job({
+          source: (x.job_publisher || "JSearch").replace(/\.com$/i, "").replace(/^www\./, ""), title: x.job_title, company: x.employer_name,
+          location: [x.job_city, x.job_state, x.job_country].filter(Boolean).join(", ") || (x.job_is_remote ? "Remote" : ""), tags: x.job_required_skills || [],
+          salary: { min: x.job_min_salary || 0, max: x.job_max_salary || 0, currency: x.job_salary_currency || "USD", period: (x.job_salary_period || "").toLowerCase(), text: sal },
+          url: x.job_apply_link || x.job_google_link, description: strip(x.job_description).slice(0, 4000), posted: toIso(x.job_posted_at_datetime_utc),
+        }));
+      }
+    } catch (e) { if (/429|403/.test(e.message)) return [...out.values()]; }
+    await pause(400);
+  }
+  return [...out.values()];
+}
+
+export const SOURCES = { linkedin, jsearch, remotive, remoteok, himalayas, workingNomadsSearch, weWorkRemotely, larajobs, vuejobs, remoteYeah, noDesk, pythonJobs, hackerNews, jooble, adzuna, freelancer, reddit };

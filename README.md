@@ -22,7 +22,7 @@ Built for a Laravel / Vue.js / Next.js / FastAPI engineer (ERP background) who w
 
 1. **Reads the CV** (`cv/cv.docx`) and detects which skills it contains (Laravel, Vue, Next.js, FastAPI, ERP…); those skills drive the scoring.
 2. **Collects jobs** from public, no-login sources (official APIs / RSS):
-   Himalayas · Working Nomads · RemoteYeah · VueJobs · LaraJobs · We Work Remotely · RemoteOK · Remotive · Jobicy · Python.org · NoDesk · Hacker News *Who is hiring* (many with a direct e-mail) — and freelance projects from Freelancer.com and Reddit.
+   Himalayas · Working Nomads · RemoteYeah · VueJobs · LaraJobs · We Work Remotely · RemoteOK · Remotive · Python.org · NoDesk · Hacker News *Who is hiring* (many with a direct e-mail) — and freelance projects from Freelancer.com and Reddit.
    Optional: **Jooble** and **Adzuna** APIs (free keys) for Gulf / Turkey / Malaysia boards.
 3. **Filters hard**: remote only, relevant to the CV, not too senior, not older than 30 days, and **location-eligible** — it keeps *worldwide / anywhere* and the target regions (UAE, Saudi, Qatar, Kuwait, Bahrain, Oman, Jordan, Turkey, Malaysia, MENA/EMEA) and drops “US only / EU only / LATAM only…”.
 4. **Scores** each job 0–100 (skill match, region, freshness, salary shown, contact available) and removes duplicates.
@@ -35,8 +35,12 @@ Built for a Laravel / Vue.js / Next.js / FastAPI engineer (ERP background) who w
    - **Job boards tab**: ready-made search links (remote + last 7 days) for LinkedIn, Indeed, Glassdoor, Jooble, Bayt, GulfTalent, Naukrigulf, Monster, Wuzzuf, Kariyer, JobStreet… and for freelance sites (Mostaql, Upwork, Freelancer, Fiverr…);
    - **Gulf clients tab**: business segments (real estate, restaurants, e-commerce, perfume shops, clinics, factories…) with Google-Maps search per city and a ready outreach message that links to the matching live demo.
 
+### LinkedIn, Indeed, Glassdoor, Bayt, GulfTalent
+- **LinkedIn** is collected from its public search pages (remote filter, last 7 days, Gulf / Jordan / Turkey / Malaysia / worldwide) — a few polite requests per run, no login, no job descriptions. Automated reading is against LinkedIn's terms, so it can be switched off (`LINKEDIN=off` in `.env`) and it stops by itself if LinkedIn rate-limits. Most of these jobs are located *in* the country (they usually need residency / a work permit) and are labelled ⚠.
+- **Indeed, Glassdoor, Bayt, GulfTalent, ZipRecruiter…** block every automated request (Cloudflare), so the only clean way to get them inside the tool is an aggregator API. Add a free **JSearch** key (Google for Jobs data: https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch) to `.env` as `JSEARCH_KEY=...` (see `.env.example`) and their results appear in the site selector with their own names (Indeed, Glassdoor, Bayt…). Jooble / Adzuna keys work the same way.
+
 ### What it does *not* do
-LinkedIn, Indeed, Glassdoor, Bayt and GulfTalent forbid scraping, so the tool does not scrape them — it builds the search link for you. Turn on their **Job Alerts** for daily e-mails. Many employers cannot hire from every country (e.g. sanctions), so check eligibility before applying.
+Indeed, Glassdoor, Bayt and GulfTalent cannot be read without an API key (see above) — until you add one, the tool builds the search link for you. Turn on their **Job Alerts** for daily e-mails. Many employers cannot hire from every country (e.g. sanctions), so check eligibility before applying.
 
 ## Run it
 

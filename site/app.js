@@ -75,7 +75,7 @@ function card(j) {
 /* ───────── filters ───────── */
 function loadSrc(k) { try { return new Set(JSON.parse(localStorage.getItem("jobhunt-src-" + k)) || []); } catch { return new Set(); } }
 const saveSrc = (k, set) => { try { localStorage.setItem("jobhunt-src-" + k, JSON.stringify([...set])); } catch { /* ignore */ } };
-const F = { jobs: { q: "", days: 7, region: "", src: loadSrc("jobs"), min: 0, sal: false, con: false, hide: true, nolocal: true, sort: "score", limit: 120 }, free: { q: "", days: 30, region: "", src: loadSrc("free"), min: 0, sal: false, con: false, hide: true, nolocal: true, sort: "new", limit: 120 } };
+const F = { jobs: { q: "", days: 7, region: "", country: "", src: loadSrc("jobs"), min: 0, sal: false, con: false, hide: true, nolocal: false, sort: "score", limit: 120 }, free: { q: "", days: 30, region: "", country: "", src: loadSrc("free"), min: 0, sal: false, con: false, hide: true, nolocal: false, sort: "new", limit: 120 } };
 function filterUI(box, key, pool) {
   const f = F[key];
   const sources = Object.entries(pool.reduce((m, j) => ((m[j.source] = (m[j.source] || 0) + 1), m), {})).sort((a, b) => b[1] - a[1]);
@@ -92,6 +92,7 @@ function filterUI(box, key, pool) {
     </div>
     <label>بحث<input type="search" id="${key}q" placeholder="laravel, dubai, react…" value="${esc(f.q)}"></label>
     <label>تاريخ النشر<div class="chips">${[1, 3, 7, 14, 30].map((d) => `<button class="chip ${f.days === d ? "on" : ""}" data-days="${d}">${d === 1 ? "24 ساعة" : d + " أيام"}</button>`).join("")}</div></label>
+    <label>الدولة<select id="${key}c"><option value="">كل الدول</option>${[...new Set(pool.map((j) => j.country).filter(Boolean))].map((cn) => [cn, pool.filter((j) => j.country === cn).length]).sort((x, y) => y[1] - x[1]).map(([cn, n]) => `<option value="${cn}" ${f.country === cn ? "selected" : ""}>${cn} (${n})</option>`).join("")}<option value="__world" ${f.country === "__world" ? "selected" : ""}>عالمي / أي دولة</option></select></label>
     <label>المنطقة<select id="${key}r"><option value="">الكل</option>${Object.entries(REG).filter(([k]) => pool.some((j) => j.region === k)).map(([k, v]) => `<option value="${k}" ${f.region === k ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label>
     <label>أدنى توافق: <b id="${key}mv">${f.min}</b><input type="range" id="${key}m" min="0" max="90" step="5" value="${f.min}"></label>
     <label>ترتيب<select id="${key}o"><option value="score" ${f.sort === "score" ? "selected" : ""}>الأنسب</option><option value="new" ${f.sort === "new" ? "selected" : ""}>الأحدث</option><option value="sal" ${f.sort === "sal" ? "selected" : ""}>فيها راتب أولاً</option></select></label>
@@ -103,6 +104,7 @@ function filterUI(box, key, pool) {
   const bind = (id, fn) => { const e = $("#" + key + id, box); if (e) e.oninput = e.onchange = fn; };
   bind("q", (e) => { f.q = e.target.value; f.limit = 120; draw(key, pool); });
   bind("r", (e) => { f.region = e.target.value; draw(key, pool); });
+  bind("c", (e) => { f.country = e.target.value; f.limit = 120; draw(key, pool); });
   $("#" + key + "site", box).onchange = (e) => {
     const v = e.target.value;
     if (v.startsWith("ext:")) {
@@ -127,7 +129,7 @@ function filterUI(box, key, pool) {
 const extList = (key) => (key === "jobs" ? B.boards.filter((b) => b.linkOnly || /Wuzzuf|Naukrigulf|Monster/.test(b.name)) : B.freelanceBoards.slice(0, 8));
 function select(key, pool) {
   const f = F[key], q = f.q.toLowerCase().trim();
-  let r = pool.filter((j) => ageDays(j) <= f.days && j.score >= f.min && (!f.region || j.region === f.region) && (!f.src.size || f.src.has(j.source))
+  let r = pool.filter((j) => ageDays(j) <= f.days && j.score >= f.min && (!f.region || j.region === f.region) && (!f.country || (f.country === "__world" ? !j.country : j.country === f.country)) && (!f.src.size || f.src.has(j.source))
     && (!f.sal || j.salary) && (!f.con || j.contacts.emails.length || j.contacts.whatsapp.length || j.contacts.phones.length)
     && (!f.nolocal || j.region !== "local") && (!f.hide || !["applied", "skip"].includes(store.status[j.id])) && (!q || `${j.title} ${j.company} ${j.location} ${j.tags.join(" ")} ${j.description}`.toLowerCase().includes(q)));
   const by = { score: (a, b) => b.score - a.score || (b.posted > a.posted ? 1 : -1), new: (a, b) => (b.posted > a.posted ? 1 : -1), sal: (a, b) => !!b.salary - !!a.salary || b.score - a.score };

@@ -4,3 +4,4 @@ data/
 site/data.js
 cv/*
 !cv/.gitkeep
+.env

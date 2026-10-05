@@ -12,6 +12,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const arg = (n, d) => { const i = args.indexOf("--" + n); return i >= 0 ? args[i + 1] : d; };
 const profile = JSON.parse(fs.readFileSync(path.join(here, "profile.json"), "utf8"));
+// optional API keys live in jobhunt/.env (never committed): JSEARCH_KEY=…  JOOBLE_KEY=…  ADZUNA_ID=…  ADZUNA_KEY=…  LINKEDIN=off
+try {
+  for (const line of fs.readFileSync(path.join(here, ".env"), "utf8").split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+    if (m && !line.trim().startsWith("#") && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+  }
+} catch { /* no .env: fine */ }
 
 /* ── 1. CV → skills ───────────────────────────────────────── */
 const cvPath = arg("cv", fs.existsSync(path.join(here, "cv/cv.docx")) ? path.join(here, "cv/cv.docx") : "");
@@ -75,6 +82,16 @@ function region(j) {
   return "restricted";
 }
 
+const COUNTRY_WORDS = {
+  "الإمارات": ["united arab emirates", "uae", "dubai", "abu dhabi", "sharjah", "ajman", "ras al khaimah"],
+  "السعودية": ["saudi", "riyadh", "jeddah", "dammam", "khobar", "ksa", "mecca", "medina"],
+  "قطر": ["qatar", "doha"], "الكويت": ["kuwait"], "البحرين": ["bahrain", "manama"], "عُمان": ["oman", "muscat"],
+  "الأردن": ["jordan", "amman"], "تركيا": ["turkey", "türkiye", "turkiye", "istanbul", "ankara", "izmir"],
+  "ماليزيا": ["malaysia", "kuala lumpur", "penang", "selangor", "johor", "putrajaya"],
+};
+const COUNTRY_RX = Object.entries(COUNTRY_WORDS).map(([name, words]) => [name, rx(words)]);
+const countryOf = (j) => { const t = ((j.location || "") + " " + (j.locationList || []).join(" ")).toLowerCase(); return (COUNTRY_RX.find(([, re]) => re.test(t)) || [""])[0]; };
+
 const now = Date.now();
 const MAX_DAYS = Number(arg("days", 30)); // the site shows the last 7 days by default; the file keeps up to 30
 const keep = [];
@@ -113,7 +130,7 @@ for (const j of raw) {
     id: (j.title + "|" + (j.company || "")).toLowerCase().replace(/[^a-z0-9|]+/g, "").slice(0, 120), source: j.source, kind: j.kind, title: j.title.slice(0, 140), company: (j.company || "").slice(0, 80),
     location: j.location || "Remote", region: reg, remote: true, salary: j.salary?.text || salaryFromText(j.description || "").slice(0, 60), tags: [...new Set((j.tags || []).map((t) => String(t).toLowerCase()))].slice(0, 8),
     url: j.url, description: (j.description || "").slice(0, 900), posted: j.posted || "", contacts: c, matched: [...new Set(matched)].slice(0, 8),
-    level: j.jobLevel || "", bids: j.bids ?? null, score: Math.max(1, Math.min(100, Math.round(score * 2.4))),
+    country: countryOf(j), level: j.jobLevel || "", bids: j.bids ?? null, score: Math.max(1, Math.min(100, Math.round(score * 2.4))),
   });
 }
 
@@ -123,7 +140,7 @@ for (const j of keep) {
   const k = (j.title + "|" + j.company).toLowerCase().replace(/[^a-z0-9|]+/g, "");
   if (!best.has(k) || best.get(k).score < j.score) best.set(k, j);
 }
-const max = Number(arg("max", 700));
+const max = Number(arg("max", 1500));
 const all = [...best.values()].sort((a, b) => b.score - a.score || (b.posted > a.posted ? 1 : -1));
 const jobs = all.filter((j) => j.kind === "job").slice(0, max);
 const free = all.filter((j) => j.kind === "freelance").slice(0, 250);
