@@ -110,7 +110,7 @@ for (const j of raw) {
   if (j.kind === "freelance" && j.bids != null) score += j.bids < 10 ? 3 : j.bids < 25 ? 1 : -1;
 
   keep.push({
-    id: `${j.source}:${(j.url || "").slice(-40)}`, source: j.source, kind: j.kind, title: j.title.slice(0, 140), company: (j.company || "").slice(0, 80),
+    id: (j.title + "|" + (j.company || "")).toLowerCase().replace(/[^a-z0-9|]+/g, "").slice(0, 120), source: j.source, kind: j.kind, title: j.title.slice(0, 140), company: (j.company || "").slice(0, 80),
     location: j.location || "Remote", region: reg, remote: true, salary: j.salary?.text || salaryFromText(j.description || "").slice(0, 60), tags: [...new Set((j.tags || []).map((t) => String(t).toLowerCase()))].slice(0, 8),
     url: j.url, description: (j.description || "").slice(0, 900), posted: j.posted || "", contacts: c, matched: [...new Set(matched)].slice(0, 8),
     level: j.jobLevel || "", bids: j.bids ?? null, score: Math.max(1, Math.min(100, Math.round(score * 2.4))),

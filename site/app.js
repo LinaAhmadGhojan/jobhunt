@@ -3,9 +3,26 @@ const D = window.JOBHUNT, B = window.BOARDS, P = D.profile;
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const KEY = "jobhunt-v1";
-let store = { status: {} };
-try { store = JSON.parse(localStorage.getItem(KEY)) || store; } catch { /* first run */ }
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch { /* private mode */ } };
+let store = { status: {}, snap: {} };
+try { store = { ...store, ...(JSON.parse(localStorage.getItem(KEY)) || {}) }; } catch { /* first run */ }
+let serverOk = false, saveTimer = null;
+const save = () => {
+  try { localStorage.setItem(KEY, JSON.stringify(store)); } catch { /* private mode */ }
+  if (!serverOk) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => fetch("/api/state", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(store) }).catch(() => {}), 150);
+};
+/** load the saved state from the file on disk (data/state.json) via the local server; merge anything kept only in this browser */
+async function loadState() {
+  try {
+    const res = await fetch("/api/state", { cache: "no-store" });
+    if (!res.ok) throw new Error("no server");
+    const remote = await res.json();
+    store = { status: { ...store.status, ...(remote.status || {}) }, snap: { ...store.snap, ...(remote.snap || {}) } };
+    serverOk = true; save();
+  } catch { serverOk = false; }
+}
+const snapOf = (j) => ({ id: j.id, title: j.title, company: j.company, location: j.location, salary: j.salary, url: j.url, source: j.source, posted: j.posted, kind: j.kind, region: j.region, score: j.score, contacts: j.contacts, matched: j.matched, description: j.description, tags: j.tags, at: Date.now() });
 const toast = (m) => { const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 1800); };
 const copy = async (text) => { try { await navigator.clipboard.writeText(text); } catch { const a = document.createElement("textarea"); a.value = text; document.body.append(a); a.select(); document.execCommand("copy"); a.remove(); } toast("تم النسخ ✔"); };
 
@@ -29,6 +46,7 @@ function kpis() {
   const w = jobsAll.filter((j) => ageDays(j) <= 7);
   $("#kpis").innerHTML = [[jobsAll.length, "وظيفة (30 يوم)"], [w.length, "آخر 7 أيام"], [jobsAll.filter((j) => j.region === "target").length, "منطقتك"], [jobsAll.filter((j) => j.contacts.emails.length).length, "فيها إيميل"], [freeAll.length, "عمل حر"], [nApplied(), "قدّمتِ"]]
     .map(([n, l]) => `<div class="kpi"><b>${n}</b><span>${l}</span></div>`).join("");
+  if (serverOk && !$("#refresh")) { const b = document.createElement("button"); b.id = "refresh"; b.className = "btn sm"; b.textContent = "↻ تحديث الوظائف الآن"; b.onclick = async () => { b.disabled = true; b.textContent = "جارٍ التحديث… (دقيقتين)"; try { await fetch("/api/refresh", { method: "POST" }); } catch { /* ignore */ } location.reload(); }; $("#updated").after(b); }
   $("#updated").textContent = `آخر تحديث: ${new Date(D.generated).toLocaleString("ar")} — شغّلي run.bat كل يوم لتجديد النتائج`;
 }
 
@@ -62,7 +80,16 @@ function filterUI(box, key, pool) {
   const f = F[key];
   const sources = Object.entries(pool.reduce((m, j) => ((m[j.source] = (m[j.source] || 0) + 1), m), {})).sort((a, b) => b[1] - a[1]);
   box.innerHTML = `
-    <div class="srcbar" id="${key}bar"><b>المواقع:</b><button class="chip ${f.src.size ? "" : "on"}" data-src="*">الكل <small>${pool.length}</small></button>${sources.map(([s, n]) => `<button class="chip ${f.src.has(s) ? "on" : ""}" data-src="${esc(s)}">${esc(s)} <small>${n}</small></button>`).join("")}${linkOnly(key)}</div>
+    <div class="srcbar" id="${key}bar">
+      <label class="sitesel">الموقع
+        <select id="${key}site">
+          <option value="*">كل المواقع (${pool.length})</option>
+          <optgroup label="نتائج داخل الأداة">${sources.map(([sn, n]) => `<option value="src:${esc(sn)}" ${f.src.has(sn) ? "selected" : ""}>${esc(sn)} (${n})</option>`).join("")}</optgroup>
+          <optgroup label="بحث مباشر — بيفتح الموقع بنتائج جاهزة ↗">${extList(key).map((b, i) => `<option value="ext:${i}">${esc(b.name)} ↗</option>`).join("")}</optgroup>
+        </select>
+      </label>
+      <small class="lo">LinkedIn / Indeed / Glassdoor / Bayt / GulfTalent / Jooble بتمنع الجمع الآلي، فاختيارها بيفتح صفحة نتائجها بكلمة البحث اللي كتبتيها (أو "Laravel Developer").</small>
+    </div>
     <label>بحث<input type="search" id="${key}q" placeholder="laravel, dubai, react…" value="${esc(f.q)}"></label>
     <label>تاريخ النشر<div class="chips">${[1, 3, 7, 14, 30].map((d) => `<button class="chip ${f.days === d ? "on" : ""}" data-days="${d}">${d === 1 ? "24 ساعة" : d + " أيام"}</button>`).join("")}</div></label>
     <label>المنطقة<select id="${key}r"><option value="">الكل</option>${Object.entries(REG).filter(([k]) => pool.some((j) => j.region === k)).map(([k, v]) => `<option value="${k}" ${f.region === k ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label>
@@ -76,13 +103,16 @@ function filterUI(box, key, pool) {
   const bind = (id, fn) => { const e = $("#" + key + id, box); if (e) e.oninput = e.onchange = fn; };
   bind("q", (e) => { f.q = e.target.value; f.limit = 120; draw(key, pool); });
   bind("r", (e) => { f.region = e.target.value; draw(key, pool); });
-  $("#" + key + "bar", box).onclick = (e) => {
-    const b = e.target.closest("[data-src],[data-goboards]"); if (!b) return;
-    if (b.dataset.goboards) { document.querySelector("[data-tab=boards]").click(); return; }
-    const v = b.dataset.src; if (v === "*") f.src.clear(); else if (f.src.has(v)) f.src.delete(v); else f.src.add(v);
-    saveSrc(key, f.src);
-    $("#" + key + "bar", box).querySelectorAll("[data-src]").forEach((x) => x.classList.toggle("on", x.dataset.src === "*" ? !f.src.size : f.src.has(x.dataset.src)));
-    f.limit = 120; draw(key, pool);
+  $("#" + key + "site", box).onchange = (e) => {
+    const v = e.target.value;
+    if (v.startsWith("ext:")) {
+      const bd = extList(key)[+v.slice(4)], q = ($("#" + key + "q", box).value || "").trim() || (key === "jobs" ? "Laravel Developer" : "Laravel");
+      window.open(key === "jobs" ? bd.url(B.countries[0], q) : bd.url(q), "_blank", "noopener");
+      e.target.value = f.src.size ? "src:" + [...f.src][0] : "*"; // stay on the current selection
+      return;
+    }
+    f.src.clear(); if (v.startsWith("src:")) f.src.add(v.slice(4));
+    saveSrc(key, f.src); f.limit = 120; draw(key, pool);
   };
   bind("m", (e) => { f.min = +e.target.value; $("#" + key + "mv", box).textContent = f.min; draw(key, pool); });
   bind("o", (e) => { f.sort = e.target.value; draw(key, pool); });
@@ -93,7 +123,8 @@ function filterUI(box, key, pool) {
   box.querySelectorAll("[data-days]").forEach((b) => (b.onclick = () => { f.days = +b.dataset.days; box.querySelectorAll("[data-days]").forEach((x) => x.classList.toggle("on", x === b)); draw(key, pool); }));
   const csv = $("#csv", box); if (csv) csv.onclick = () => exportCsv(select(key, pool));
 }
-function linkOnly(key) { return key === "jobs" ? `<span class="lo">LinkedIn · Indeed · Glassdoor · Bayt · GulfTalent · Jooble = روابط بحث فقط <button class="chip" data-goboards="1">افتحيهم ↗</button></span>` : ""; }
+/** big boards that forbid scraping: shown as chips that open their own search (remote, last week) with the text typed in the search box */
+const extList = (key) => (key === "jobs" ? B.boards.filter((b) => b.linkOnly || /Wuzzuf|Naukrigulf|Monster/.test(b.name)) : B.freelanceBoards.slice(0, 8));
 function select(key, pool) {
   const f = F[key], q = f.q.toLowerCase().trim();
   let r = pool.filter((j) => ageDays(j) <= f.days && j.score >= f.min && (!f.region || j.region === f.region) && (!f.src.size || f.src.has(j.source))
@@ -153,7 +184,8 @@ document.addEventListener("click", (e) => {
   const o = e.target.closest("[data-open]"); if (o) return openDrawer(o.dataset.open);
   const s = e.target.closest("[data-st]"); if (!s) return;
   const id = s.dataset.id, st = s.dataset.st;
-  if (store.status[id] === st) delete store.status[id]; else store.status[id] = st;
+  const jj = D.jobs.find((x) => x.id === id) || store.snap[id];
+  if (store.status[id] === st) { delete store.status[id]; if (st !== "saved" && st !== "applied") delete store.snap[id]; } else { store.status[id] = st; if (jj) store.snap[id] = { ...snapOf(jj), at: store.snap[id]?.at || Date.now(), st: st }; }
   save(); kpis(); toast({ saved: "تم الحفظ ⭐", applied: "سُجّل كمُقدَّم ✅", skip: "تم التجاهل" }[st]); redraw(); if (!$("#drawer").hidden) $("#drawer").hidden = true;
 });
 
@@ -198,8 +230,12 @@ function gulfTab() {
   $("#gc").onchange = paint; paint();
 }
 function savedTab() {
-  const rows = D.jobs.filter((j) => store.status[j.id] === "saved" || store.status[j.id] === "applied");
-  $("#tab-saved").innerHTML = rows.length ? `<p class="muted">${rows.filter((j) => store.status[j.id] === "applied").length} قدّمتِ عليها · ${rows.filter((j) => store.status[j.id] === "saved").length} محفوظة</p><div class="list">${rows.map(card).join("")}</div>` : '<div class="notice">لسا ما حفظتِ أو قدّمتِ على شي. اضغطي ⭐ أو ✅ على أي وظيفة.</div>';
+  const rows = Object.entries(store.status).filter(([, v]) => v === "saved" || v === "applied").map(([id, v]) => ({ ...(D.jobs.find((x) => x.id === id) || store.snap[id] || { id, title: id, url: "#", company: "", location: "", salary: "", description: "", tags: [], matched: [], contacts: { emails: [], phones: [], whatsapp: [], telegram: [] }, score: 0, region: "", posted: "" }), _at: store.snap[id]?.at || 0 }))
+    .sort((a, b) => b._at - a._at);
+  const applied = rows.filter((j) => store.status[j.id] === "applied").length;
+  $("#tab-saved").innerHTML = rows.length
+    ? `<div class="notice">${serverOk ? "✔ محفوظ على جهازك في <b>data/state.json</b> — ما بيضيع حتى لو غيّرتي المتصفح أو شغّلتي run.bat كل يوم." : "⚠ الحفظ مؤقت بهالمتصفح فقط. شغّلي <b>run.bat</b> (بيفتح localhost:4600) ليتحفظ على ملف بجهازك."}</div><p class="muted">${applied} قدّمتِ عليها · ${rows.length - applied} محفوظة</p><div class="list">${rows.map(card).join("")}</div>`
+    : '<div class="notice">لسا ما حفظتِ أو قدّمتِ على شي. اضغطي ⭐ أو ✅ على أي وظيفة.</div>';
 }
 
 let tab = "jobs";
@@ -210,4 +246,5 @@ $("#tabs").onclick = (e) => {
   document.querySelectorAll("main > section").forEach((s) => (s.hidden = s.id !== "tab-" + tab));
   redraw(); window.scrollTo(0, 0);
 };
-kpis(); filterUI($("#fJobs"), "jobs", jobsAll); filterUI($("#fFree"), "free", freeAll); boardsTab(); gulfTab(); draw("jobs", jobsAll); draw("free", freeAll);
+async function init() { await loadState(); kpis(); filterUI($("#fJobs"), "jobs", jobsAll); filterUI($("#fFree"), "free", freeAll); boardsTab(); gulfTab(); draw("jobs", jobsAll); draw("free", freeAll); }
+init();

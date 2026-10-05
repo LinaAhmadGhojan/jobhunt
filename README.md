@@ -40,6 +40,9 @@ LinkedIn, Indeed, Glassdoor, Bayt and GulfTalent forbid scraping, so the tool do
 
 ## Run it
 
+On Windows just double-click **`run.bat`**: it collects fresh jobs, starts a tiny local server (`server.mjs`, port 4600) and opens http://localhost:4600.
+Your **Saved / Applied / Skipped** jobs are stored in `data/state.json` (a snapshot of every job you mark is kept, so it stays in your list even after the ad expires) — they never reset when you rerun the tool or switch browsers. Opening `site/index.html` directly still works, but then the state only lives in that browser.
+
 ```bash
 npm install            # one dependency: adm-zip (reads the .docx CV)
 node collect.mjs       # or double-click run.bat on Windows
@@ -47,6 +50,8 @@ node collect.mjs       # or double-click run.bat on Windows
 ```
 
 Options: `node collect.mjs --cv path/to/cv.docx --days 30 --max 700 --only himalayas,remoteok --debug`
+
+The **site selector** at the top lists every source with its result count and also **LinkedIn / Indeed / Glassdoor / Bayt / GulfTalent / Jooble…**: picking one of those opens its search page (remote, last 7 days) using the text typed in the search box.
 
 Optional keys: `JOOBLE_KEY`, `ADZUNA_ID`, `ADZUNA_KEY`.
 
@@ -64,6 +69,7 @@ schtasks /Create /SC DAILY /ST 09:00 /TN JobHunt /TR "node C:\path\to\jobhunt\co
 | `sources.mjs` | one function per job source (add your own here) |
 | `util.mjs` | HTTP, RSS parser, contact / salary extraction |
 | `profile.json` | skills, regions, filters, message templates |
+| `server.mjs` | local server: serves the dashboard, saves your state to `data/state.json`, refresh button |
 | `site/` | the static dashboard (`index.html`, `app.js`, `boards.js`, `style.css`) |
 
 ---
