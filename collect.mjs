@@ -60,8 +60,12 @@ function region(j) {
   const loc = (j.location || "").toLowerCase(), desc = (j.description || "").slice(0, 2500).toLowerCase();
   if (j.kind === "freelance") return "online";
   if (R.restrictedDesc.test(desc)) return "restricted";
-  if (j.locationList?.length) return j.locationList.some((c) => R.target.test(c)) ? "target" : "restricted";
-  if (R.target.test(loc)) return "target";
+  // A single named country (e.g. "United Arab Emirates") means the candidate must live / hold a work permit there → "local".
+  // Broad regions (MENA / EMEA / Middle East / GCC) stay "target"; "worldwide / anywhere" stays "worldwide".
+  const broad = rx(["mena", "emea", "mea", "middle east", "gcc", "gulf", "arab world"]);
+  if (j.locationList?.length) { if (j.locationList.some((c) => broad.test(c))) return "target"; return j.locationList.some((c) => R.target.test(c)) ? "local" : "restricted"; }
+  if (broad.test(loc)) return "target";
+  if (R.target.test(loc)) return R.world.test(loc) ? "worldwide" : "local";
   if (R.world.test(loc)) return "worldwide";
   if (R.restricted.test(loc)) return "restricted";
   // "Russian Federation (Remote)", "Remote (Poland)" … a named place that is not a target → the employer restricts the location
@@ -97,7 +101,7 @@ for (const j of raw) {
   const age = j.posted ? (now - new Date(j.posted)) / 864e5 : 30;
   if (age > MAX_DAYS) { drop(j, "older than " + MAX_DAYS + "d"); continue; }
   score += age <= 3 ? 4 : age <= 7 ? 3 : age <= 14 ? 2 : age <= 30 ? 1 : -2;
-  score += reg === "target" ? 6 : reg === "worldwide" ? 3 : 0;
+  score += reg === "target" ? 6 : reg === "worldwide" ? 3 : reg === "local" ? -12 : 0;
   if (j.salary?.text || j.salary?.min) score += 2;
   const c = j.contacts || contacts(j.description);
   if (c.emails.length || c.whatsapp.length || c.phones.length) score += 3;

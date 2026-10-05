@@ -19,7 +19,7 @@ const ago = (j) => {
 };
 const PRETTY = { laravel: "Laravel", php: "PHP", vue: "Vue.js", "vue.js": "Vue.js", vuejs: "Vue.js", nextjs: "Next.js", "next.js": "Next.js", react: "React", typescript: "TypeScript", fastapi: "FastAPI", python: "Python", erp: "ERP", "full stack": "Full-Stack", "full-stack": "Full-Stack", fullstack: "Full-Stack", backend: "Back-end", "back-end": "Back-end", "back end": "Back-end", mysql: "MySQL", "rest api": "REST APIs", restful: "REST APIs", api: "APIs", tailwind: "Tailwind", docker: "Docker", javascript: "JavaScript", postgres: "PostgreSQL", sql: "SQL", inertia: "Inertia", livewire: "Livewire", nuxt: "Nuxt" };
 const skillsOf = (j) => { const s = [...new Set((j.matched || []).map((k) => PRETTY[k] || k))].slice(0, 6); return s.length ? s.join(", ") : "Laravel, Vue.js, Next.js, FastAPI"; };
-const REG = { target: ["🎯 منطقتك المستهدفة", "t"], worldwide: ["🌐 عالمي", "w"], open: ["🌍 ريموت (المنطقة غير محددة)", "o"], online: ["💻 مشروع أونلاين", "w"] };
+const REG = { target: ["🎯 منطقتك المستهدفة", "t"], worldwide: ["🌐 عالمي", "w"], local: ["⚠ يتطلب إقامة/تصريح عمل بالدولة", "o"], open: ["🌍 ريموت (المنطقة غير محددة)", "o"], online: ["💻 مشروع أونلاين", "w"] };
 const SRC_ORDER = [...new Set(D.jobs.map((j) => j.source))].sort();
 
 /* ───────── header KPIs ───────── */
@@ -55,7 +55,7 @@ function card(j) {
 }
 
 /* ───────── filters ───────── */
-const F = { jobs: { q: "", days: 7, region: "", source: "", min: 0, sal: false, con: false, hide: true, sort: "score", limit: 120 }, free: { q: "", days: 30, region: "", source: "", min: 0, sal: false, con: false, hide: true, sort: "new", limit: 120 } };
+const F = { jobs: { q: "", days: 7, region: "", source: "", min: 0, sal: false, con: false, hide: true, nolocal: true, sort: "score", limit: 120 }, free: { q: "", days: 30, region: "", source: "", min: 0, sal: false, con: false, hide: true, nolocal: true, sort: "new", limit: 120 } };
 function filterUI(box, key, pool) {
   const f = F[key];
   const sources = [...new Set(pool.map((j) => j.source))].sort();
@@ -68,6 +68,7 @@ function filterUI(box, key, pool) {
     <label>ترتيب<select id="${key}o"><option value="score" ${f.sort === "score" ? "selected" : ""}>الأنسب</option><option value="new" ${f.sort === "new" ? "selected" : ""}>الأحدث</option><option value="sal" ${f.sort === "sal" ? "selected" : ""}>فيها راتب أولاً</option></select></label>
     <label class="chk"><input type="checkbox" id="${key}sal" ${f.sal ? "checked" : ""}> فيها راتب</label>
     <label class="chk"><input type="checkbox" id="${key}con" ${f.con ? "checked" : ""}> فيها وسيلة تواصل</label>
+    <label class="chk"><input type="checkbox" id="${key}nolocal" ${f.nolocal ? "checked" : ""}> إخفاء اللي بدها إقامة بدولة معينة</label>
     <label class="chk"><input type="checkbox" id="${key}hide" ${f.hide ? "checked" : ""}> إخفاء ما قدّمت/تجاهلت</label>
     ${key === "jobs" ? '<button class="btn sm" id="csv">⬇ تصدير CSV</button>' : ""}`;
   const bind = (id, fn) => { const e = $("#" + key + id, box); if (e) e.oninput = e.onchange = fn; };
@@ -78,6 +79,7 @@ function filterUI(box, key, pool) {
   bind("o", (e) => { f.sort = e.target.value; draw(key, pool); });
   bind("sal", (e) => { f.sal = e.target.checked; draw(key, pool); });
   bind("con", (e) => { f.con = e.target.checked; draw(key, pool); });
+  bind("nolocal", (e) => { f.nolocal = e.target.checked; draw(key, pool); });
   bind("hide", (e) => { f.hide = e.target.checked; draw(key, pool); });
   box.querySelectorAll("[data-days]").forEach((b) => (b.onclick = () => { f.days = +b.dataset.days; box.querySelectorAll("[data-days]").forEach((x) => x.classList.toggle("on", x === b)); draw(key, pool); }));
   const csv = $("#csv", box); if (csv) csv.onclick = () => exportCsv(select(key, pool));
@@ -86,7 +88,7 @@ function select(key, pool) {
   const f = F[key], q = f.q.toLowerCase().trim();
   let r = pool.filter((j) => ageDays(j) <= f.days && j.score >= f.min && (!f.region || j.region === f.region) && (!f.source || j.source === f.source)
     && (!f.sal || j.salary) && (!f.con || j.contacts.emails.length || j.contacts.whatsapp.length || j.contacts.phones.length)
-    && (!f.hide || !["applied", "skip"].includes(store.status[j.id])) && (!q || `${j.title} ${j.company} ${j.location} ${j.tags.join(" ")} ${j.description}`.toLowerCase().includes(q)));
+    && (!f.nolocal || j.region !== "local") && (!f.hide || !["applied", "skip"].includes(store.status[j.id])) && (!q || `${j.title} ${j.company} ${j.location} ${j.tags.join(" ")} ${j.description}`.toLowerCase().includes(q)));
   const by = { score: (a, b) => b.score - a.score || (b.posted > a.posted ? 1 : -1), new: (a, b) => (b.posted > a.posted ? 1 : -1), sal: (a, b) => !!b.salary - !!a.salary || b.score - a.score };
   return r.sort(by[f.sort]);
 }
