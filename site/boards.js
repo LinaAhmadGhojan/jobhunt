@@ -141,5 +141,16 @@ window.BOARDS = (() => {
     { ar: "الدوحة", en: "Doha" }, { ar: "الكويت", en: "Kuwait City" }, { ar: "المنامة", en: "Manama" }, { ar: "مسقط", en: "Muscat" }, { ar: "عمّان", en: "Amman" },
     { ar: "إسطنبول", en: "Istanbul" }, { ar: "كوالالمبور", en: "Kuala Lumpur" },
   ];
-  return { countries, keywords, boards, freelanceBoards, postSearches, postQueries, segments, cities };
+  // group every board so the dashboard can filter by site type
+  const G = {
+    major: ["LinkedIn", "Indeed", "Glassdoor", "Jooble", "Bayt", "GulfTalent", "Naukrigulf", "Monster Gulf", "Careerjet", "Talent.com", "ZipRecruiter", "SimplyHired", "Dice", "Built In", "Jobgether"],
+    remote: ["Himalayas", "We Work Remotely", "Remotive", "RemoteOK", "Working Nomads", "Remote.co", "FlexJobs", "JustRemote", "Jobspresso", "Dynamite", "Remote Rocketship", "NoDesk", "Arc.dev", "Turing", "Torre", "Work at a Startup", "Otta", "LaraJobs", "VueJobs", "Python.org", "Hacker News", "Wellfound"],
+    gulf: ["Wuzzuf", "Akhtaboot", "Tanqeeb", "Dubizzle", "Emirates Jobs", "Qatar Living", "Q8", "Bahrain Jobs", "Oman Jobs", "Mihnati", "Jordan Jobs", "Glassdoor — الخليج"],
+    tm: ["Kariyer", "Yenibiris", "JobStreet", "Maukerja"],
+  };
+  const groupOf = (name) => Object.entries(G).find(([, l]) => l.some((x) => name.includes(x)))?.[0] || "remote";
+  boards.forEach((b) => { b.group = groupOf(b.name); b.linkOnly = G.major.some((x) => b.name.includes(x)); });
+  freelanceBoards.forEach((b) => { b.group = "freelance"; });
+  const groups = [["all", "الكل"], ["major", "المواقع الكبيرة (LinkedIn, Indeed, Bayt…)"], ["remote", "ريموت فقط"], ["gulf", "الخليج / الأردن / مصر"], ["tm", "تركيا وماليزيا"], ["freelance", "عمل حر"]];
+  return { countries, keywords, boards, freelanceBoards, postSearches, postQueries, segments, cities, groups };
 })();

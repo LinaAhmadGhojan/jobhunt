@@ -55,15 +55,17 @@ function card(j) {
 }
 
 /* ───────── filters ───────── */
-const F = { jobs: { q: "", days: 7, region: "", source: "", min: 0, sal: false, con: false, hide: true, nolocal: true, sort: "score", limit: 120 }, free: { q: "", days: 30, region: "", source: "", min: 0, sal: false, con: false, hide: true, nolocal: true, sort: "new", limit: 120 } };
+function loadSrc(k) { try { return new Set(JSON.parse(localStorage.getItem("jobhunt-src-" + k)) || []); } catch { return new Set(); } }
+const saveSrc = (k, set) => { try { localStorage.setItem("jobhunt-src-" + k, JSON.stringify([...set])); } catch { /* ignore */ } };
+const F = { jobs: { q: "", days: 7, region: "", src: loadSrc("jobs"), min: 0, sal: false, con: false, hide: true, nolocal: true, sort: "score", limit: 120 }, free: { q: "", days: 30, region: "", src: loadSrc("free"), min: 0, sal: false, con: false, hide: true, nolocal: true, sort: "new", limit: 120 } };
 function filterUI(box, key, pool) {
   const f = F[key];
-  const sources = [...new Set(pool.map((j) => j.source))].sort();
+  const sources = Object.entries(pool.reduce((m, j) => ((m[j.source] = (m[j.source] || 0) + 1), m), {})).sort((a, b) => b[1] - a[1]);
   box.innerHTML = `
+    <div class="srcbar" id="${key}bar"><b>المواقع:</b><button class="chip ${f.src.size ? "" : "on"}" data-src="*">الكل <small>${pool.length}</small></button>${sources.map(([s, n]) => `<button class="chip ${f.src.has(s) ? "on" : ""}" data-src="${esc(s)}">${esc(s)} <small>${n}</small></button>`).join("")}${linkOnly(key)}</div>
     <label>بحث<input type="search" id="${key}q" placeholder="laravel, dubai, react…" value="${esc(f.q)}"></label>
     <label>تاريخ النشر<div class="chips">${[1, 3, 7, 14, 30].map((d) => `<button class="chip ${f.days === d ? "on" : ""}" data-days="${d}">${d === 1 ? "24 ساعة" : d + " أيام"}</button>`).join("")}</div></label>
     <label>المنطقة<select id="${key}r"><option value="">الكل</option>${Object.entries(REG).filter(([k]) => pool.some((j) => j.region === k)).map(([k, v]) => `<option value="${k}" ${f.region === k ? "selected" : ""}>${v[0]}</option>`).join("")}</select></label>
-    <label>المصدر<select id="${key}s"><option value="">الكل</option>${sources.map((s) => `<option ${f.source === s ? "selected" : ""}>${esc(s)}</option>`).join("")}</select></label>
     <label>أدنى توافق: <b id="${key}mv">${f.min}</b><input type="range" id="${key}m" min="0" max="90" step="5" value="${f.min}"></label>
     <label>ترتيب<select id="${key}o"><option value="score" ${f.sort === "score" ? "selected" : ""}>الأنسب</option><option value="new" ${f.sort === "new" ? "selected" : ""}>الأحدث</option><option value="sal" ${f.sort === "sal" ? "selected" : ""}>فيها راتب أولاً</option></select></label>
     <label class="chk"><input type="checkbox" id="${key}sal" ${f.sal ? "checked" : ""}> فيها راتب</label>
@@ -74,7 +76,14 @@ function filterUI(box, key, pool) {
   const bind = (id, fn) => { const e = $("#" + key + id, box); if (e) e.oninput = e.onchange = fn; };
   bind("q", (e) => { f.q = e.target.value; f.limit = 120; draw(key, pool); });
   bind("r", (e) => { f.region = e.target.value; draw(key, pool); });
-  bind("s", (e) => { f.source = e.target.value; draw(key, pool); });
+  $("#" + key + "bar", box).onclick = (e) => {
+    const b = e.target.closest("[data-src],[data-goboards]"); if (!b) return;
+    if (b.dataset.goboards) { document.querySelector("[data-tab=boards]").click(); return; }
+    const v = b.dataset.src; if (v === "*") f.src.clear(); else if (f.src.has(v)) f.src.delete(v); else f.src.add(v);
+    saveSrc(key, f.src);
+    $("#" + key + "bar", box).querySelectorAll("[data-src]").forEach((x) => x.classList.toggle("on", x.dataset.src === "*" ? !f.src.size : f.src.has(x.dataset.src)));
+    f.limit = 120; draw(key, pool);
+  };
   bind("m", (e) => { f.min = +e.target.value; $("#" + key + "mv", box).textContent = f.min; draw(key, pool); });
   bind("o", (e) => { f.sort = e.target.value; draw(key, pool); });
   bind("sal", (e) => { f.sal = e.target.checked; draw(key, pool); });
@@ -84,9 +93,10 @@ function filterUI(box, key, pool) {
   box.querySelectorAll("[data-days]").forEach((b) => (b.onclick = () => { f.days = +b.dataset.days; box.querySelectorAll("[data-days]").forEach((x) => x.classList.toggle("on", x === b)); draw(key, pool); }));
   const csv = $("#csv", box); if (csv) csv.onclick = () => exportCsv(select(key, pool));
 }
+function linkOnly(key) { return key === "jobs" ? `<span class="lo">LinkedIn · Indeed · Glassdoor · Bayt · GulfTalent · Jooble = روابط بحث فقط <button class="chip" data-goboards="1">افتحيهم ↗</button></span>` : ""; }
 function select(key, pool) {
   const f = F[key], q = f.q.toLowerCase().trim();
-  let r = pool.filter((j) => ageDays(j) <= f.days && j.score >= f.min && (!f.region || j.region === f.region) && (!f.source || j.source === f.source)
+  let r = pool.filter((j) => ageDays(j) <= f.days && j.score >= f.min && (!f.region || j.region === f.region) && (!f.src.size || f.src.has(j.source))
     && (!f.sal || j.salary) && (!f.con || j.contacts.emails.length || j.contacts.whatsapp.length || j.contacts.phones.length)
     && (!f.nolocal || j.region !== "local") && (!f.hide || !["applied", "skip"].includes(store.status[j.id])) && (!q || `${j.title} ${j.company} ${j.location} ${j.tags.join(" ")} ${j.description}`.toLowerCase().includes(q)));
   const by = { score: (a, b) => b.score - a.score || (b.posted > a.posted ? 1 : -1), new: (a, b) => (b.posted > a.posted ? 1 : -1), sal: (a, b) => !!b.salary - !!a.salary || b.score - a.score };
@@ -153,17 +163,20 @@ function boardsTab() {
   const ck = (id, arr, key = "label") => `<select id="${id}">${arr.map((x, i) => `<option value="${i}">${esc(x[key] || x.ar)}</option>`).join("")}</select>`;
   el.innerHTML = `
     <div class="notice">مواقع <b>LinkedIn · Indeed · Glassdoor · Jooble · Bayt · GulfTalent</b> تمنع الجمع الآلي، فبنبني لك رابط البحث الجاهز (ريموت + آخر أسبوع) وبيفتح النتائج مباشرة. فعّلي كمان <b>Job Alerts</b> على كل موقع ليوصلك الجديد على الإيميل يومياً.</div>
-    <div class="filters"><label>الوظيفة${ck("bk", B.keywords)}</label><label>الدولة${ck("bc", B.countries, "ar")}</label></div>
+    <div class="filters"><div class="srcbar" id="bg"><b>نوع الموقع:</b>${B.groups.map(([k, l], i) => `<button class="chip ${i ? "" : "on"}" data-g="${k}">${esc(l)}</button>`).join("")}</div><label>الوظيفة${ck("bk", B.keywords)}</label><label>الدولة${ck("bc", B.countries, "ar")}</label><label>ابحثي عن موقع<input type="search" id="bs" placeholder="linkedin, bayt, upwork…"></label></div>
     <h3>🔎 مواقع التوظيف</h3><div id="bt"></div>
     <h3 style="margin-top:26px">🧑‍💻 مواقع العمل الحر</h3><div id="bf"></div>
     <h3 style="margin-top:26px">📣 منشورات "مطلوب مبرمج" على السوشيال (الأحدث)</h3><div id="bp"></div>`;
   const paint = () => {
     const k = B.keywords[+$("#bk").value], c = B.countries[+$("#bc").value];
-    $("#bt").innerHTML = `<table class="bt"><tr><th>الموقع</th><th>ملاحظة</th><th>رابط البحث: ${esc(k.label)} — ${esc(c.ar)}</th></tr>${B.boards.map((b) => `<tr><td><b>${esc(b.name)}</b></td><td>${esc(b.note)}</td><td><a href="${esc(b.url(c, k.label))}" target="_blank" rel="noreferrer">افتحي النتائج ↗</a></td></tr>`).join("")}</table>`;
-    $("#bf").innerHTML = `<table class="bt"><tr><th>الموقع</th><th>ملاحظة</th><th>بحث: ${esc(k.label)}</th></tr>${B.freelanceBoards.map((b) => `<tr><td><b>${esc(b.name)}</b></td><td>${esc(b.note)}</td><td><a href="${esc(b.url(k.label))}" target="_blank" rel="noreferrer">افتحي ↗</a></td></tr>`).join("")}</table>`;
+    const g = $("#bg .on").dataset.g, nm = $("#bs").value.toLowerCase().trim(), show = (b) => (g === "all" || b.group === g) && (!nm || b.name.toLowerCase().includes(nm));
+    $("#bt").innerHTML = `<table class="bt"><tr><th>الموقع</th><th>ملاحظة</th><th>رابط البحث: ${esc(k.label)} — ${esc(c.ar)}</th></tr>${B.boards.filter(show).map((b) => `<tr><td><b>${esc(b.name)}</b>${b.linkOnly ? ' <span class="b o" title="الموقع بيمنع الجمع الآلي — بيفتح البحث فقط">رابط بحث فقط</span>' : ""}</td><td>${esc(b.note)}</td><td><a href="${esc(b.url(c, k.label))}" target="_blank" rel="noreferrer">افتحي النتائج ↗</a></td></tr>`).join("")}</table>`;
+    $("#bf").innerHTML = `<table class="bt"><tr><th>الموقع</th><th>ملاحظة</th><th>بحث: ${esc(k.label)}</th></tr>${B.freelanceBoards.filter(show).map((b) => `<tr><td><b>${esc(b.name)}</b></td><td>${esc(b.note)}</td><td><a href="${esc(b.url(k.label))}" target="_blank" rel="noreferrer">افتحي ↗</a></td></tr>`).join("")}</table>`;
     $("#bp").innerHTML = `<table class="bt"><tr><th>ماذا تبحثين</th>${B.postSearches.map((s) => `<th>${esc(s.name)}</th>`).join("")}</tr>${B.postQueries.map((q) => `<tr><td>${esc(q.ar)}</td>${B.postSearches.map((s) => `<td><a href="${esc(s.url(q.q))}" target="_blank" rel="noreferrer">بحث ↗</a></td>`).join("")}</tr>`).join("")}</table>`;
   };
-  $("#bk").onchange = $("#bc").onchange = paint; paint();
+  $("#bk").onchange = $("#bc").onchange = $("#bs").oninput = paint;
+  $("#bg").onclick = (e) => { const x = e.target.closest("[data-g]"); if (!x) return; $("#bg").querySelectorAll("[data-g]").forEach((y) => y.classList.toggle("on", y === x)); paint(); };
+  paint();
 }
 function gulfTab() {
   const el = $("#tab-gulf");
