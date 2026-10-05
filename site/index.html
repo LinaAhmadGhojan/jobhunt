@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>لوحة البحث عن عمل — لينا غوجان</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230F0F0F'/%3E%3Cpath d='M20 14v30h24' fill='none' stroke='%23FED000' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-in">
+      <div>
+        <h1>لوحة البحث عن عمل <small>Lina Ahmad Ghojan</small></h1>
+        <p id="updated" class="muted"></p>
+      </div>
+      <div class="kpis" id="kpis"></div>
+    </div>
+    <nav class="wrap tabs" id="tabs" role="tablist">
+      <button data-tab="jobs" class="on">💼 وظائف عن بُعد</button>
+      <button data-tab="free">🧑‍💻 عمل حر / مشاريع</button>
+      <button data-tab="boards">🔎 مواقع التوظيف (روابط جاهزة)</button>
+      <button data-tab="gulf">🌍 عملاء الخليج (رسائل جاهزة)</button>
+      <button data-tab="saved">⭐ متابعتي</button>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <section id="tab-jobs">
+      <div class="filters" id="fJobs"></div>
+      <p class="muted" id="countJobs"></p>
+      <div id="listJobs" class="list"></div>
+    </section>
+    <section id="tab-free" hidden>
+      <div class="filters" id="fFree"></div>
+      <p class="muted" id="countFree"></p>
+      <div id="listFree" class="list"></div>
+    </section>
+    <section id="tab-boards" hidden></section>
+    <section id="tab-gulf" hidden></section>
+    <section id="tab-saved" hidden></section>
+  </main>
+
+  <aside id="drawer" class="drawer" hidden>
+    <div class="drawer-in">
+      <button class="x" id="closeDrawer" aria-label="إغلاق">×</button>
+      <div id="drawerBody"></div>
+    </div>
+  </aside>
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="data.js"></script>
+  <script src="boards.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

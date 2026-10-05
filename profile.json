@@ -1,0 +1,35 @@
+{
+  "name": "Lina Ahmad Ghojan",
+  "email": "eng.lina.ghojan@gmail.com",
+  "phone": "+963 995 019 487",
+  "portfolio": "https://linaghojan.smartflowuae.com",
+  "github": "https://github.com/LinaAhmadGhojan",
+  "linkedin": "https://www.linkedin.com/in/lina-ghojan-089880219",
+  "cvUrl": "https://linaghojan.smartflowuae.com/Lina-ghojan-cv.pdf",
+
+  "skills": {
+    "laravel": 6, "php": 4, "vue": 5, "vue.js": 5, "vuejs": 5, "nuxt": 2, "inertia": 3, "livewire": 3,
+    "next.js": 4, "nextjs": 4, "react": 3, "typescript": 3, "fastapi": 4, "python": 2,
+    "erp": 4, "full stack": 3, "full-stack": 3, "fullstack": 3, "backend": 2, "back-end": 2, "back end": 2,
+    "mysql": 2, "rest api": 2, "restful": 2, "api": 1, "tailwind": 1, "docker": 1, "postgres": 1, "sql": 1, "javascript": 1
+  },
+  "core": ["laravel", "php", "vue", "next.js", "nextjs", "react", "fastapi", "python", "full stack", "full-stack", "fullstack", "backend", "back-end", "back end", "erp", "typescript", "web developer", "software engineer", "software developer"],
+
+  "queries": ["laravel", "php", "vue", "vue.js", "nextjs", "react", "typescript", "fastapi", "python", "full stack", "backend", "erp", "web developer", "software engineer"],
+  "freelanceQueries": ["laravel", "php website", "vue", "nextjs", "react website", "fastapi", "web application", "ecommerce website", "restaurant website", "real estate website", "dashboard", "erp system", "api development", "shopify", "wordpress ecommerce"],
+
+  "targetCountries": ["united arab emirates", "uae", "dubai", "abu dhabi", "sharjah", "saudi", "ksa", "riyadh", "jeddah", "qatar", "doha", "kuwait", "bahrain", "oman", "muscat", "jordan", "amman", "turkey", "türkiye", "turkiye", "istanbul", "ankara", "malaysia", "kuala lumpur", "gcc", "gulf", "middle east", "mena", "emea", "mea", "arab"],
+  "worldwideWords": ["worldwide", "anywhere", "global", "globally", "world", "any location", "all countries", "international", "work from anywhere", "remote"],
+  "restrictedWords": ["us only", "usa only", "u.s. only", "united states", "usa", "canada", "united kingdom", "uk only", "europe", "eu only", "european union", "germany", "france", "spain", "italy", "netherlands", "poland", "portugal", "ireland", "sweden", "norway", "denmark", "finland", "switzerland", "austria", "belgium", "latam", "latin america", "brazil", "argentina", "mexico", "colombia", "india", "pakistan", "bangladesh", "philippines", "australia", "new zealand", "japan", "korea", "singapore", "south africa", "nigeria", "kenya", "ukraine", "romania", "bulgaria", "czech", "hungary", "greece", "americas", "north america", "apac", "asia"],
+  "restrictedDescription": ["north america", "united states only", "us-based", "u.s.-based", "usa-based", "within the us", "us residents", "must live in", "european time zone", "eu timezone", "cet timezone", "est time zone", "pst hours", "based in the us", "based in the uk", "based in europe", "based in canada", "latam only", "must be located in the us", "must reside in the us", "us citizens only", "us work authorization", "authorized to work in the united states", "must be based in the uk", "right to work in the uk", "must be located in europe", "eu work permit", "must be located in canada", "only candidates from", "overlap with est", "overlap with pst", "u.s. based"],
+  "excludeTitle": ["business development", "account executive", "account manager", "qa ", "test engineer", "analytics engineer", "analyst", "engineering manager", "product manager", "project manager", "customer success", "customer support", "content writer", "copywriter", "seo ", "hr ", "legal", "paralegal", "accountant", "data engineer", "data analyst", "solutions architect", "sales engineer", "principal", "staff engineer", "director", "head of", "vp ", "vice president", "chief", "intern", "internship", "unpaid", "10+ years", "8+ years", "12+ years", "ios", "android", "swift", "kotlin", "devops", "data scientist", "machine learning", "salesforce", "sap ", "java ", ".net", "c#", "ruby", "golang", "rust", "designer", "recruiter", "sales", "marketing", "support specialist", "translator", "transcription", "annotator"],
+
+  "templates": {
+    "job_en": "Subject: {role} — Lina Ahmad Ghojan (Laravel / Vue / Next.js)\n\nHello {company} team,\n\nI'm Lina, a full-stack software engineer with 4+ years of experience building ERP systems and web applications. I saw your opening for {role} and it matches my work: {skills}.\n\nA few things I've built: a manufacturing ERP (production orders, batch & serial tracking), a marketplace (Next.js + FastAPI), logistics and restaurant systems. All of them run live here: {portfolio}\n\nCV: {cvUrl}\nGitHub: {github}\nLinkedIn: {linkedin}\n\nI work fully remotely and I'm available to start right away. I would be glad to discuss how I can help your team.\n\nBest regards,\nLina Ahmad Ghojan\n{email} | {phone}",
+    "job_ar": "السلام عليكم،\n\nأنا لينا غوجان، مهندسة برمجيات Full-Stack (خريجة هندسة المعلوماتية — جامعة دمشق) ولدي أكثر من 4 سنوات خبرة في بناء أنظمة ERP وتطبيقات الويب. اطلعت على إعلانكم عن وظيفة «{role}» في {company}، وخبرتي تتوافق معها: {skills}.\n\nأعمالي تعمل مباشرة على الرابط: {portfolio}\nالسيرة الذاتية: {cvUrl}\nGitHub: {github}\nLinkedIn: {linkedin}\n\nأعمل عن بُعد بالكامل وجاهزة للبدء فوراً. يسعدني التواصل لمناقشة التفاصيل.\n\nمع الاحترام،\nلينا أحمد غوجان\n{email} | {phone}",
+    "whatsapp_en": "Hello 👋 I'm Lina, a full-stack developer (Laravel / Vue / Next.js, 4+ years in ERP & web apps). I'm interested in the \"{role}\" opportunity at {company}. My live projects: {portfolio} — CV: {cvUrl}. Available remotely, can I send more details?",
+    "whatsapp_ar": "السلام عليكم 👋 أنا لينا، مبرمجة Full-Stack (Laravel / Vue / Next.js) خبرة 4+ سنوات في أنظمة ERP وتطبيقات الويب. مهتمة بفرصة «{role}» لدى {company}. أعمالي تعمل مباشرة: {portfolio} — السيرة الذاتية: {cvUrl}. أعمل عن بُعد، هل يمكنني إرسال تفاصيل أكثر؟",
+    "freelance_en": "Hello,\n\nI can build \"{role}\" for you. I'm a full-stack developer (Laravel / Vue / Next.js / FastAPI) with 4+ years of experience in ERP systems, dashboards, e-commerce and booking platforms.\n\nSimilar work I've delivered (all live): {portfolio}\n\nWhat I'd do: a short call to confirm scope → a clear price and timeline → weekly demos. Fixed price or hourly, whichever you prefer.\n\nCan you tell me your deadline and budget range?\n\nLina Ahmad Ghojan — {email}",
+    "freelance_ar": "السلام عليكم،\n\nيمكنني تنفيذ «{role}» لكم. أنا مطورة Full-Stack (Laravel / Vue / Next.js / FastAPI) بخبرة تزيد عن 4 سنوات في أنظمة ERP ولوحات التحكم والمتاجر الإلكترونية وأنظمة الحجز.\n\nأمثلة على أعمال مشابهة (تعمل مباشرة): {portfolio}\n\nآلية العمل: مكالمة قصيرة لتحديد المتطلبات ← سعر ومدة واضحة ← عرض تجريبي أسبوعي. بسعر ثابت أو بالساعة حسب رغبتكم.\n\nما هي المدة المطلوبة والميزانية التقريبية؟\n\nلينا أحمد غوجان — {email}"
+  }
+}

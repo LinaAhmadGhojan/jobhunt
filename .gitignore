@@ -1,0 +1,6 @@
+node_modules/
+# generated results and your private CV — never committed
+data/
+site/data.js
+cv/*
+!cv/.gitkeep

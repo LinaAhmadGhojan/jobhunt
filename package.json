@@ -1,0 +1,15 @@
+{
+  "name": "jobhunt",
+  "version": "1.0.0",
+  "description": "Remote jobs and freelance leads dashboard that ranks opportunities against a CV",
+  "scripts": {
+    "collect": "node collect.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "adm-zip": "^0.6.1"
+  },
+  "type": "module"
+}
